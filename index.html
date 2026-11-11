@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Location Detector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            text-align: left;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>📍 GPS লোকেশন চেকার</h2>
+    <p>আপনার বর্তমান সঠিক অবস্থান দেখতে নিচের বাটনে ক্লিক করুন:</p>
+    <button onclick="getLocation()">আমার লোকেশন দেখুন</button>
+    
+    <div id="output" class="result" style="display:none;"></div>
+</div>
+
+<script>
+function getLocation() {
+    const output = document.getElementById("output");
+    output.style.display = "block";
+    output.innerHTML = "⏳ আপনার ফোনের GPS থেকে লোকেশন খোঁজা হচ্ছে...";
+
+    // ব্রাউজারে Geolocation সাপোর্ট করে কি না তা যাচাই করা
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition, showError, {
+            enableHighAccuracy: true, // নিখুঁত GPS লোকেশনের জন্য
+            timeout: 10000,
+            maximumAge: 0
+        });
+    } else {
+        output.innerHTML = "❌ দুঃখিত, আপনার ব্রাউজার GPS সাপোর্ট করে না।";
+    }
+}
+
+function showPosition(position) {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    const accuracy = Math.round(position.coords.accuracy);
+    const output = document.getElementById("output");
+
+    output.innerHTML = `
+        <span class="highlight">Latitude (অক্ষাংশ):</span> ${lat}<br>
+        <span class="highlight">Longitude (দ্রাঘিমাংশ):</span> ${lon}<br>
+        <span class="highlight">সঠিকতা (Accuracy):</span> প্রায় ${accuracy} মিটার<br>
+        <span class="highlight">জায়গার নাম:</span> খোঁজা হচ্ছে...
+    `;
+
+    // কোঅর্ডিনেটস থেকে জায়গার নাম বের করা (Reverse Geocoding)
+    fetch(`https://openstreetmap.org{lat}&lon=${lon}`)
+        .then(response => response.json())
+        .then(data => {
+            const placeName = data.display_name || "নাম পাওয়া যায়নি";
+            output.innerHTML = `
+                <span class="highlight">Latitude:</span> ${lat}<br>
+                <span class="highlight">Longitude:</span> ${lon}<br>
+                <span class="highlight">Accuracy:</span> প্রায় ${accuracy} মিটার<br><br>
+                <span class="highlight">📍 বর্তমান ঠিকানা:</span><br> ${placeName}<br><br>
+                <a href="https://google.com{lat},${lon}" target="_blank">🗺️ Google Maps-এ দেখুন</a>
+            `;
+        })
+        .catch(() => {
+            output.innerHTML += "<br>⚠️ ঠিকানার নাম লোড করা যায়নি, তবে কোঅর্ডিনেটস সঠিক আছে।";
+        });
+}
+
+function showError(error) {
+    const output = document.getElementById("output");
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            output.innerHTML = "❌ আপনি লোকেশন পারমিশন দেননি। ব্রাউজার সেটিংস থেকে Allow করুন।";
+            break;
+        case error.POSITION_UNAVAILABLE:
+            output.innerHTML = "❌ লোকেশন তথ্য পাওয়া যাচ্ছে না। ফোনের GPS চালু করুন।";
+            break;
+        case error.TIMEOUT:
+            output.innerHTML = "⏳ লোকেশন খুঁজতে বেশি সময় লাগছে। আবার চেষ্টা করুন।";
+            break;
+        default:
+            output.innerHTML = "❌ অজানা কোনো সমস্যা হয়েছে।";
+    }
+}
+</script>
+
+</body>
+</html>
