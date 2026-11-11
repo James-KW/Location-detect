@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kuwait GPS Location Checker</title>
+    <title>Kuwait Zoo GPS Attendance Checker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -25,7 +25,7 @@
             text-align: center;
         }
         button {
-            background-color: #28a745;
+            background-color: #007bff;
             color: white;
             border: none;
             padding: 14px 20px;
@@ -37,7 +37,7 @@
             margin-top: 10px;
         }
         button:hover {
-            background-color: #218838;
+            background-color: #0056b3;
         }
         .result {
             margin-top: 20px;
@@ -45,20 +45,31 @@
             background: #f8f9fa;
             padding: 15px;
             border-radius: 8px;
-            border-left: 4px solid #28a745;
             font-size: 14px;
             line-height: 1.7;
         }
-        .highlight {
+        .status-in {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 6px;
             font-weight: bold;
-            color: #1a252f;
+            margin-bottom: 10px;
         }
-        .map-btn {
+        .status-out {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .map-link {
             display: inline-block;
-            margin-top: 12px;
-            background: #007bff;
+            margin-top: 10px;
+            background: #28a745;
             color: white;
-            padding: 8px 14px;
+            padding: 8px 12px;
             text-decoration: none;
             border-radius: 5px;
             font-size: 13px;
@@ -68,21 +79,26 @@
 <body>
 
 <div class="card">
-    <h2>📍 লাইভ GPS লোকেশন চেকার</h2>
-    <p>আপনার বর্তমান সঠিক অবস্থান ও এলাকা দেখতে নিচের বাটনে চাপুন:</p>
-    <button onclick="getLocation()">লোকেশন চেক করুন</button>
+    <h2>🦁 Kuwait Zoo GPS চেকার</h2>
+    <p>Mapy.com (OSM) এর সঠিক কোঅর্ডিনেটস অনুযায়ী আপনার অবস্থান যাচাই করুন:</p>
+    <button onclick="checkZooLocation()">লোকেশন যাচাই করুন</button>
     
     <div id="output" class="result" style="display:none;"></div>
 </div>
 
 <script>
-function getLocation() {
+// আপনার দেওয়া Mapy.com লিংক থেকে নেওয়া Kuwait Zoo-এর সঠিক কেন্দ্রবিন্দু
+const ZOO_LAT = 29.3002478;
+const ZOO_LON = 47.9611464;
+const ALLOWED_RADIUS_METERS = 350; // চিড়িয়াখানার পুরো এলাকা কাভার করার জন্য ৩৫০ মিটার ব্যাসার্ধ
+
+function checkZooLocation() {
     const output = document.getElementById("output");
     output.style.display = "block";
-    output.innerHTML = "⏳ আপনার ফোনের GPS স্যাটেলাইট থেকে তথ্য নেওয়া হচ্ছে...";
+    output.innerHTML = "⏳ GPS স্যাটেলাইট থেকে আপনার অবস্থান মাপা হচ্ছে...";
 
     if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(showPosition, showError, {
+        navigator.geolocation.getCurrentPosition(verifyPosition, showError, {
             enableHighAccuracy: true,
             timeout: 15000,
             maximumAge: 0
@@ -92,53 +108,51 @@ function getLocation() {
     }
 }
 
-function showPosition(position) {
-    const lat = position.coords.latitude;
-    const lon = position.coords.longitude;
+function verifyPosition(position) {
+    const userLat = position.coords.latitude;
+    const userLon = position.coords.longitude;
     const accuracy = Math.round(position.coords.accuracy);
-    const output = document.getElementById("output");
 
-    // ব্রাউজার-ফ্রেন্ডলি Reverse Geocoding API (কোনো ব্লক ছাড়াই কাজ করে)
-    fetch(`https://bigdatacloud.net{lat}&longitude=${lon}&localityLanguage=en`)
-        .then(response => response.json())
-        .then(data => {
-            const area = data.locality || data.city || "অজানা এলাকা";
-            const governorate = data.principalSubdivision || "Kuwait";
-            const country = data.countryName || "";
+    // কেন্দ্রবিন্দু থেকে ইউজারের দূরত্ব হিসাব করা (Haversine Formula)
+    const distance = Math.round(calculateDistance(userLat, userLon, ZOO_LAT, ZOO_LON));
+    const isInsideZoo = distance <= ALLOWED_RADIUS_METERS;
 
-            output.innerHTML = `
-                <span class="highlight">📌 এলাকা (Area):</span> ${area}, ${governorate}<br>
-                <span class="highlight">🌍 দেশ:</span> ${country}<br>
-                <span class="highlight">🧭 Latitude:</span> ${lat.toFixed(6)}<br>
-                <span class="highlight">🧭 Longitude:</span> ${lon.toFixed(6)}<br>
-                <span class="highlight">🎯 Accuracy:</span> ${accuracy} মিটার<br>
-                <a class="map-btn" href="https://google.com{lat},${lon}" target="_blank">🗺️ Google Maps-এ সঠিক পিন দেখুন</a>
-            `;
-        })
-        .catch(() => {
-            output.innerHTML = `
-                <span class="highlight">🧭 Latitude:</span> ${lat.toFixed(6)}<br>
-                <span class="highlight">🧭 Longitude:</span> ${lon.toFixed(6)}<br>
-                <span class="highlight">🎯 Accuracy:</span> ${accuracy} মিটার<br>
-                <a class="map-btn" href="https://google.com{lat},${lon}" target="_blank">🗺️ Google Maps-এ লোকেশন দেখুন</a>
-            `;
-        });
+    const statusHtml = isInsideZoo 
+        ? `<div class="status-in">✅ আপনি সঠিক কর্মস্থলে আছেন: Kuwait Zoo (Omariya)</div>`
+        : `<div class="status-out">⚠️ আপনি Kuwait Zoo-এর সীমানার বাইরে আছেন!</div>`;
+
+    document.getElementById("output").innerHTML = `
+        ${statusHtml}
+        <b>📍 শনাক্তকৃত জায়গা:</b> ${isInsideZoo ? "Kuwait Zoo, Farwaniya Governorate" : "বাইরের এলাকা"}<br>
+        <b>📏 কেন্দ্র থেকে দূরত্ব:</b> প্রায় ${distance} মিটার<br>
+        <b>🧭 আপনার GPS:</b> ${userLat.toFixed(6)}, ${userLon.toFixed(6)}<br>
+        <b>🎯 সিগন্যাল একুরেসি:</b> ${accuracy} মিটার<br>
+        <a class="map-link" href="https://mapy.com{userLon}&y=${userLat}&z=17" target="_blank">🗺️ Mapy.com-এ আপনার পিন দেখুন</a>
+    `;
+}
+
+// দুটি GPS কোঅর্ডিনেটসের মধ্যকার দূরত্ব (মিটারে) বের করার ফর্মুলা
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // পৃথিবীর ব্যাসার্ধ মিটারে
+    const p1 = lat1 * Math.PI / 180;
+    const p2 = lat2 * Math.PI / 180;
+    const dp = (lat2 - lat1) * Math.PI / 180;
+    const dl = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(dp/2) * Math.sin(dp/2) +
+              Math.cos(p1) * Math.cos(p2) *
+              Math.sin(dl/2) * Math.sin(dl/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
 }
 
 function showError(error) {
     const output = document.getElementById("output");
-    switch(error.code) {
-        case error.PERMISSION_DENIED:
-            output.innerHTML = "❌ লোকেশন পারমিশন ব্লক করা আছে। ব্রাউজারের সেটিংস থেকে Location Allow করুন।";
-            break;
-        case error.POSITION_UNAVAILABLE:
-            output.innerHTML = "❌ ফোনের GPS সিগন্যাল পাওয়া যাচ্ছে না। ফোনের Location চালু আছে কি না দেখুন।";
-            break;
-        case error.TIMEOUT:
-            output.innerHTML = "⏳ সিগন্যাল পেতে দেরি হচ্ছে। খোলা জায়গায় এসে আবার চেষ্টা করুন।";
-            break;
-        default:
-            output.innerHTML = "❌ লোকেশন বের করতে সমস্যা হচ্ছে।";
+    if (error.code === error.PERMISSION_DENIED) {
+        output.innerHTML = "❌ ব্রাউজার থেকে Location পারমিশন Allow করুন।";
+    } else {
+        output.innerHTML = "❌ GPS সিগন্যাল পাওয়া যাচ্ছে না। ফোনের Location চালু করুন।";
     }
 }
 </script>
